@@ -1,14 +1,19 @@
 module pc(
-    input clk,
-    input rst,
-    output reg [31:0] pc
+
+    input wire clk,
+    input wire rst,
+    input wire [31:0] pc_in,
+
+    output reg [31:0] pc_out
+
 );
 
-always @(posedge clk) begin
-    if (rst)
-        pc <= 32'd0;
+always @(posedge clk or posedge rst)
+begin
+    if(rst)
+        pc_out <= 32'd0;
     else
-        pc <= pc + 4;
+        pc_out <= pc_in;
 end
 
 endmodule
