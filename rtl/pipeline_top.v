@@ -74,9 +74,15 @@ module pipeline_top (
     // EXECUTE STAGE
     // ============================================================
 
-    wire [31:0] alu_input_b;
-    wire [31:0] alu_result;
-    wire alu_zero;
+wire [31:0] alu_input_a;
+wire [31:0] forwarded_b;
+wire [31:0] alu_input_b;
+
+wire [1:0] forward_a;
+wire [1:0] forward_b;
+
+wire [31:0] alu_result;
+wire alu_zero;
 
     reg [3:0] alu_ctrl;
 
@@ -390,30 +396,64 @@ module pipeline_top (
 
     end
 
+// ============================================================
+// FORWARDING UNIT
+// ============================================================
+
+forwarding_unit forwarding_inst (
+    .id_ex_rs1(id_ex_rs1),
+    .id_ex_rs2(id_ex_rs2),
+
+    .ex_mem_rd(ex_mem_rd),
+    .mem_wb_rd(mem_wb_rd),
+
+    .ex_mem_reg_write(ex_mem_reg_write),
+    .mem_wb_reg_write(mem_wb_reg_write),
+
+    .forward_a(forward_a),
+    .forward_b(forward_b)
+);
+
+
+// ============================================================
+// FORWARDING MUXES
+// ============================================================
+
+// ALU operand A
+assign alu_input_a =
+    (forward_a == 2'b10) ? ex_mem_alu_result :
+    (forward_a == 2'b01) ? write_back_data :
+                            id_ex_rd1;
+
+// Forwarded register operand B
+assign forwarded_b =
+    (forward_b == 2'b10) ? ex_mem_alu_result :
+    (forward_b == 2'b01) ? write_back_data :
+                            id_ex_rd2;
+
 
     // ============================================================
     // ALU INPUT MUX
     // ============================================================
 
-    assign alu_input_b =
-        id_ex_alu_src ?
-        id_ex_imm :
-        id_ex_rd2;
-
+assign alu_input_b =
+    id_ex_alu_src ?
+    id_ex_imm :
+    forwarded_b;
 
     // ============================================================
     // ALU
     // ============================================================
 
-    alu alu_inst (
-        .a(id_ex_rd1),
-        .b(alu_input_b),
+alu alu_inst (
+    .a(alu_input_a),
+    .b(alu_input_b),
 
-        .alu_ctrl(alu_ctrl),
+    .alu_ctrl(alu_ctrl),
 
-        .result(alu_result),
-        .zero(alu_zero)
-    );
+    .result(alu_result),
+    .zero(alu_zero)
+);
 
 
     // ============================================================
@@ -425,7 +465,7 @@ module pipeline_top (
         .rst(rst),
 
         .alu_result_in(alu_result),
-        .rd2_in(id_ex_rd2),
+	.rd2_in(forwarded_b),
         .pc_target_in(branch_target),
 
         .zero_in(alu_zero),

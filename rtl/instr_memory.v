@@ -15,8 +15,7 @@ module instr_memory (
             rom[i] = 32'h00000013;
 
         // Load test program
-        $readmemh("tests/program.hex", rom);
-
+$readmemh("tests/program.hex", rom);
     end
 
     // Word-aligned instruction address
