@@ -1,23 +1,27 @@
+
 module if_id (
-    input wire clk,
-    input wire rst,
+    input  wire        clk,
+    input  wire        rst,
+    input  wire        stall,
 
-    input wire [31:0] pc_in,
-    input wire [31:0] instr_in,
+    input  wire [31:0] pc_in,
+    input  wire [31:0] instr_in,
 
-    output reg [31:0] pc_out,
-    output reg [31:0] instr_out
+    output reg  [31:0] pc_out,
+    output reg  [31:0] instr_out
 );
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             pc_out    <= 32'b0;
-            instr_out <= 32'h00000013;   // NOP
+            instr_out <= 32'h00000013;  // NOP
         end
-        else begin
+        else if (!stall) begin
             pc_out    <= pc_in;
             instr_out <= instr_in;
         end
+        // When stall=1, retain the current values.
+
     end
 
 endmodule

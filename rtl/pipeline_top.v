@@ -10,6 +10,7 @@ module pipeline_top (
     wire [31:0] pc_current;
     wire [31:0] pc_next;
     wire [31:0] pc_plus_4;
+	wire stall;
 
     wire [31:0] instr;
 
@@ -68,6 +69,18 @@ module pipeline_top (
 
     wire [2:0] id_ex_funct3;
     wire [6:0] id_ex_funct7;
+
+    // ============================================================
+    // LOAD-USE HAZARD DETECTION
+    // ============================================================
+
+    hazard_detection_unit hazard_inst (
+        .id_ex_rd(id_ex_rd),
+        .id_ex_mem_read(id_ex_mem_read),
+        .if_id_rs1(if_id_instr[19:15]),
+        .if_id_rs2(if_id_instr[24:20]),
+        .stall(stall)
+    );
 
 
     // ============================================================
@@ -160,12 +173,15 @@ wire alu_zero;
     // PC
     // ============================================================
 
+   
     pc pc_inst (
         .clk(clk),
         .rst(rst),
+        .stall(stall),
         .pc_in(pc_next),
         .pc_out(pc_current)
     );
+
 
 
     // ============================================================
@@ -182,9 +198,11 @@ wire alu_zero;
     // IF/ID PIPELINE REGISTER
     // ============================================================
 
+   
     if_id if_id_inst (
         .clk(clk),
         .rst(rst),
+        .stall(stall),
 
         .pc_in(pc_current),
         .instr_in(instr),
@@ -192,6 +210,7 @@ wire alu_zero;
         .pc_out(if_id_pc),
         .instr_out(if_id_instr)
     );
+
 
 
     // ============================================================
@@ -251,9 +270,10 @@ wire alu_zero;
     // ID/EX PIPELINE REGISTER
     // ============================================================
 
-    id_ex id_ex_inst (
-        .clk(clk),
-        .rst(rst),
+id_ex id_ex_inst (
+    .clk(clk),
+    .rst(rst),
+    .stall(stall),
 
         // Control signals
         .reg_write_in(reg_write),

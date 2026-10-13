@@ -1,6 +1,8 @@
+
 module id_ex (
     input wire clk,
     input wire rst,
+    input wire stall,
 
     // Control signals
     input wire reg_write_in,
@@ -51,9 +53,7 @@ module id_ex (
 );
 
 always @(posedge clk or posedge rst) begin
-
     if (rst) begin
-
         reg_write_out <= 0;
         mem_to_reg_out <= 0;
         mem_write_out <= 0;
@@ -74,10 +74,31 @@ always @(posedge clk or posedge rst) begin
 
         funct3_out <= 3'b0;
         funct7_out <= 7'b0;
+    end
+    else if (stall) begin
+        // Insert a bubble: disable all side effects.
+        reg_write_out <= 0;
+        mem_to_reg_out <= 0;
+        mem_write_out <= 0;
+        mem_read_out <= 0;
+        branch_out <= 0;
+        alu_src_out <= 0;
+        jump_out <= 0;
+        alu_op_out <= 2'b00;
 
+        pc_out <= 32'b0;
+        rd1_out <= 32'b0;
+        rd2_out <= 32'b0;
+        imm_out <= 32'b0;
+
+        rs1_out <= 5'b0;
+        rs2_out <= 5'b0;
+        rd_out <= 5'b0;
+
+        funct3_out <= 3'b0;
+        funct7_out <= 7'b0;
     end
     else begin
-
         reg_write_out <= reg_write_in;
         mem_to_reg_out <= mem_to_reg_in;
         mem_write_out <= mem_write_in;
@@ -98,9 +119,7 @@ always @(posedge clk or posedge rst) begin
 
         funct3_out <= funct3_in;
         funct7_out <= funct7_in;
-
     end
-
 end
 
 endmodule
