@@ -3,6 +3,7 @@ module id_ex (
     input wire clk,
     input wire rst,
     input wire stall,
+	input wire flush,
 
     // Control signals
     input wire reg_write_in,
@@ -75,7 +76,7 @@ always @(posedge clk or posedge rst) begin
         funct3_out <= 3'b0;
         funct7_out <= 7'b0;
     end
-    else if (stall) begin
+    else if (stall || flush) begin
         // Insert a bubble: disable all side effects.
         reg_write_out <= 0;
         mem_to_reg_out <= 0;

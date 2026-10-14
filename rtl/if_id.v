@@ -3,6 +3,7 @@ module if_id (
     input  wire        clk,
     input  wire        rst,
     input  wire        stall,
+input wire flush,
 
     input  wire [31:0] pc_in,
     input  wire [31:0] instr_in,

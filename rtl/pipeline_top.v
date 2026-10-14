@@ -1,3 +1,4 @@
+
 module pipeline_top (
     input wire clk,
     input wire rst
@@ -10,12 +11,10 @@ module pipeline_top (
     wire [31:0] pc_current;
     wire [31:0] pc_next;
     wire [31:0] pc_plus_4;
-	wire stall;
-
+    wire stall;
     wire [31:0] instr;
 
     assign pc_plus_4 = pc_current + 32'd4;
-
 
     // ============================================================
     // IF/ID PIPELINE REGISTER OUTPUTS
@@ -23,7 +22,6 @@ module pipeline_top (
 
     wire [31:0] if_id_pc;
     wire [31:0] if_id_instr;
-
 
     // ============================================================
     // DECODE STAGE
@@ -42,7 +40,6 @@ module pipeline_top (
     wire jump;
 
     wire [1:0] alu_op;
-
 
     // ============================================================
     // ID/EX PIPELINE REGISTER OUTPUTS
@@ -82,26 +79,25 @@ module pipeline_top (
         .stall(stall)
     );
 
-
     // ============================================================
     // EXECUTE STAGE
     // ============================================================
 
-wire [31:0] alu_input_a;
-wire [31:0] forwarded_b;
-wire [31:0] alu_input_b;
+    wire [31:0] alu_input_a;
+    wire [31:0] forwarded_b;
+    wire [31:0] alu_input_b;
 
-wire [1:0] forward_a;
-wire [1:0] forward_b;
+    wire [1:0] forward_a;
+    wire [1:0] forward_b;
 
-wire [31:0] alu_result;
-wire alu_zero;
+    wire [31:0] alu_result;
+    wire alu_zero;
 
     reg [3:0] alu_ctrl;
 
     wire [31:0] branch_target;
     wire branch_taken;
-
+    wire flush;
 
     // ============================================================
     // EX/MEM PIPELINE REGISTER OUTPUTS
@@ -121,13 +117,11 @@ wire alu_zero;
     wire ex_mem_mem_to_reg;
     wire ex_mem_branch_taken;
 
-
     // ============================================================
     // MEMORY STAGE
     // ============================================================
 
     wire [31:0] mem_read_data;
-
 
     // ============================================================
     // MEM/WB PIPELINE REGISTER OUTPUTS
@@ -135,12 +129,10 @@ wire alu_zero;
 
     wire [31:0] mem_wb_read_data;
     wire [31:0] mem_wb_alu_result;
-
     wire [4:0] mem_wb_rd;
 
     wire mem_wb_reg_write;
     wire mem_wb_mem_to_reg;
-
 
     // ============================================================
     // WRITEBACK STAGE
@@ -150,9 +142,8 @@ wire alu_zero;
 
     assign write_back_data =
         mem_wb_mem_to_reg ?
-        mem_wb_read_data :
-        mem_wb_alu_result;
-
+            mem_wb_read_data :
+            mem_wb_alu_result;
 
     // ============================================================
     // PC / NEXT PC LOGIC
@@ -160,20 +151,20 @@ wire alu_zero;
 
     assign branch_target = id_ex_pc + id_ex_imm;
 
-    assign branch_taken =
-        id_ex_branch & alu_zero;
+    assign branch_taken = id_ex_branch & alu_zero;
+
+    // Flush wrong-path instructions when a branch is taken.
+    assign flush = branch_taken;
 
     assign pc_next =
         branch_taken ?
-        branch_target :
-        pc_plus_4;
-
+            branch_target :
+            pc_plus_4;
 
     // ============================================================
     // PC
     // ============================================================
 
-   
     pc pc_inst (
         .clk(clk),
         .rst(rst),
@@ -181,8 +172,6 @@ wire alu_zero;
         .pc_in(pc_next),
         .pc_out(pc_current)
     );
-
-
 
     // ============================================================
     // INSTRUCTION MEMORY
@@ -193,25 +182,20 @@ wire alu_zero;
         .instr(instr)
     );
 
-
     // ============================================================
     // IF/ID PIPELINE REGISTER
     // ============================================================
 
-   
     if_id if_id_inst (
         .clk(clk),
         .rst(rst),
         .stall(stall),
-
+        .flush(flush),
         .pc_in(pc_current),
         .instr_in(instr),
-
         .pc_out(if_id_pc),
         .instr_out(if_id_instr)
     );
-
-
 
     // ============================================================
     // CONTROL UNIT
@@ -219,21 +203,15 @@ wire alu_zero;
 
     control_unit cu_inst (
         .opcode(if_id_instr[6:0]),
-
         .reg_write(reg_write),
         .alu_src(alu_src),
-
         .mem_read(mem_read),
         .mem_write(mem_write),
-
         .mem_to_reg(mem_to_reg),
-
         .branch(branch),
         .jump(jump),
-
         .alu_op(alu_op)
     );
-
 
     // ============================================================
     // REGISTER FILE
@@ -241,20 +219,14 @@ wire alu_zero;
 
     reg_file rf_inst (
         .clk(clk),
-
         .we3(mem_wb_reg_write),
-
         .ra1(if_id_instr[19:15]),
         .ra2(if_id_instr[24:20]),
-
         .wa3(mem_wb_rd),
-
         .wd3(write_back_data),
-
         .rd1(rd1),
         .rd2(rd2)
     );
-
 
     // ============================================================
     // IMMEDIATE GENERATOR
@@ -265,15 +237,15 @@ wire alu_zero;
         .imm_out(imm_out)
     );
 
-
     // ============================================================
     // ID/EX PIPELINE REGISTER
     // ============================================================
 
-id_ex id_ex_inst (
-    .clk(clk),
-    .rst(rst),
-    .stall(stall),
+    id_ex id_ex_inst (
+        .clk(clk),
+        .rst(rst),
+        .stall(stall),
+        .flush(flush),
 
         // Control signals
         .reg_write_in(reg_write),
@@ -323,38 +295,33 @@ id_ex id_ex_inst (
         .funct7_out(id_ex_funct7)
     );
 
-
     // ============================================================
     // ALU CONTROL
     // ============================================================
 
     always @(*) begin
-
         case (id_ex_alu_op)
 
-            // ADD
-            // Used for LW, SW, etc.
+            // ADD: loads, stores, and immediate arithmetic
             2'b00: begin
                 alu_ctrl = 4'b0000;
             end
 
-            // SUB
-            // Used for BEQ
+            // SUB: BEQ comparison
             2'b01: begin
                 alu_ctrl = 4'b0001;
             end
 
             // R-type / I-type ALU operations
             2'b10: begin
-
                 case (id_ex_funct3)
 
                     // ADD / SUB
                     3'b000: begin
                         if (id_ex_funct7[5])
-                            alu_ctrl = 4'b0001;   // SUB
+                            alu_ctrl = 4'b0001;
                         else
-                            alu_ctrl = 4'b0000;   // ADD
+                            alu_ctrl = 4'b0000;
                     end
 
                     // AND
@@ -380,9 +347,9 @@ id_ex id_ex_inst (
                     // SRL / SRA
                     3'b101: begin
                         if (id_ex_funct7[5])
-                            alu_ctrl = 4'b0111;   // SRA
+                            alu_ctrl = 4'b0111;
                         else
-                            alu_ctrl = 4'b0110;   // SRL
+                            alu_ctrl = 4'b0110;
                     end
 
                     // SLT
@@ -400,7 +367,6 @@ id_ex id_ex_inst (
                     end
 
                 endcase
-
             end
 
             // LUI / AUIPC
@@ -413,68 +379,59 @@ id_ex id_ex_inst (
             end
 
         endcase
-
     end
 
-// ============================================================
-// FORWARDING UNIT
-// ============================================================
+    // ============================================================
+    // FORWARDING UNIT
+    // ============================================================
 
-forwarding_unit forwarding_inst (
-    .id_ex_rs1(id_ex_rs1),
-    .id_ex_rs2(id_ex_rs2),
+    forwarding_unit forwarding_inst (
+        .id_ex_rs1(id_ex_rs1),
+        .id_ex_rs2(id_ex_rs2),
+        .ex_mem_rd(ex_mem_rd),
+        .mem_wb_rd(mem_wb_rd),
+        .ex_mem_reg_write(ex_mem_reg_write),
+        .mem_wb_reg_write(mem_wb_reg_write),
+        .forward_a(forward_a),
+        .forward_b(forward_b)
+    );
 
-    .ex_mem_rd(ex_mem_rd),
-    .mem_wb_rd(mem_wb_rd),
+    // ============================================================
+    // FORWARDING MUXES
+    // ============================================================
 
-    .ex_mem_reg_write(ex_mem_reg_write),
-    .mem_wb_reg_write(mem_wb_reg_write),
+    // ALU operand A
+    assign alu_input_a =
+        (forward_a == 2'b10) ? ex_mem_alu_result :
+        (forward_a == 2'b01) ? write_back_data :
+                               id_ex_rd1;
 
-    .forward_a(forward_a),
-    .forward_b(forward_b)
-);
-
-
-// ============================================================
-// FORWARDING MUXES
-// ============================================================
-
-// ALU operand A
-assign alu_input_a =
-    (forward_a == 2'b10) ? ex_mem_alu_result :
-    (forward_a == 2'b01) ? write_back_data :
-                            id_ex_rd1;
-
-// Forwarded register operand B
-assign forwarded_b =
-    (forward_b == 2'b10) ? ex_mem_alu_result :
-    (forward_b == 2'b01) ? write_back_data :
-                            id_ex_rd2;
-
+    // Forwarded register operand B
+    assign forwarded_b =
+        (forward_b == 2'b10) ? ex_mem_alu_result :
+        (forward_b == 2'b01) ? write_back_data :
+                               id_ex_rd2;
 
     // ============================================================
     // ALU INPUT MUX
     // ============================================================
 
-assign alu_input_b =
-    id_ex_alu_src ?
-    id_ex_imm :
-    forwarded_b;
+    assign alu_input_b =
+        id_ex_alu_src ?
+            id_ex_imm :
+            forwarded_b;
 
     // ============================================================
     // ALU
     // ============================================================
 
-alu alu_inst (
-    .a(alu_input_a),
-    .b(alu_input_b),
-
-    .alu_ctrl(alu_ctrl),
-
-    .result(alu_result),
-    .zero(alu_zero)
-);
-
+    alu alu_inst (
+        .a(alu_input_a),
+        .b(alu_input_b),
+        .alu_ctrl(alu_ctrl),
+        .result(alu_result),
+        .zero(alu_zero)
+    );
 
     // ============================================================
     // EX/MEM PIPELINE REGISTER
@@ -485,9 +442,8 @@ alu alu_inst (
         .rst(rst),
 
         .alu_result_in(alu_result),
-	.rd2_in(forwarded_b),
+        .rd2_in(forwarded_b),
         .pc_target_in(branch_target),
-
         .zero_in(alu_zero),
 
         .rd_in(id_ex_rd),
@@ -501,7 +457,6 @@ alu alu_inst (
         .alu_result_out(ex_mem_alu_result),
         .rd2_out(ex_mem_rd2),
         .pc_target_out(ex_mem_pc_target),
-
         .zero_out(ex_mem_zero),
 
         .rd_out(ex_mem_rd),
@@ -513,24 +468,18 @@ alu alu_inst (
         .branch_taken_out(ex_mem_branch_taken)
     );
 
-
     // ============================================================
     // DATA MEMORY
     // ============================================================
 
     data_memory dmem_inst (
         .clk(clk),
-
         .mem_write(ex_mem_mem_write),
         .mem_read(ex_mem_mem_read),
-
         .addr(ex_mem_alu_result),
-
         .write_data(ex_mem_rd2),
-
         .read_data(mem_read_data)
     );
-
 
     // ============================================================
     // MEM/WB PIPELINE REGISTER
@@ -542,7 +491,6 @@ alu alu_inst (
 
         .read_data_in(mem_read_data),
         .alu_result_in(ex_mem_alu_result),
-
         .rd_in(ex_mem_rd),
 
         .reg_write_in(ex_mem_reg_write),
@@ -550,7 +498,6 @@ alu alu_inst (
 
         .read_data_out(mem_wb_read_data),
         .alu_result_out(mem_wb_alu_result),
-
         .rd_out(mem_wb_rd),
 
         .reg_write_out(mem_wb_reg_write),

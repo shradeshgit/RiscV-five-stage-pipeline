@@ -8,6 +8,7 @@ module control_unit (
     output reg        branch,
     output reg        jump,
     output reg  [1:0] alu_op
+
 );
 
     always @(*) begin
@@ -20,7 +21,6 @@ module control_unit (
         branch     = 1'b0;
         jump       = 1'b0;
         alu_op     = 2'b00;
-
         case (opcode)
             // R-Type Instructions (ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU)
             7'b0110011: begin
@@ -65,7 +65,7 @@ module control_unit (
                 alu_op    = 2'b00;
             end
 
-            // JALR Instruction
+                   // JALR Instruction
             7'b1100111: begin
                 jump      = 1'b1;
                 reg_write = 1'b1;
